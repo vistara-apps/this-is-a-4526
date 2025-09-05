@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import PitchGenerator from './PitchGenerator'
 import { User, Zap, Copy, CheckCircle } from 'lucide-react'
+import { openaiClient } from '../services/api'
+import { useAuth } from '../contexts/AuthContext'
 
 export default function ProfileOptimizerPage() {
   const [selectedSkill, setSelectedSkill] = useState('')
@@ -9,6 +11,7 @@ export default function ProfileOptimizerPage() {
   const [generatedPitch, setGeneratedPitch] = useState('')
   const [isGenerating, setIsGenerating] = useState(false)
   const [copied, setCopied] = useState(false)
+  const { user } = useAuth()
 
   const skills = [
     'Content Writing',
@@ -29,12 +32,18 @@ export default function ProfileOptimizerPage() {
 
     setIsGenerating(true)
     
-    // Simulate AI generation (in real app, this would call OpenAI API)
-    setTimeout(() => {
-      const pitch = generatePitchContent(selectedSkill, experience, specialties)
+    try {
+      // Use OpenAI API to generate pitch
+      const pitch = await openaiClient.generatePitch(selectedSkill, experience, specialties)
       setGeneratedPitch(pitch)
+    } catch (error) {
+      console.error('Error generating pitch:', error)
+      // Fallback to template-based generation
+      const fallbackPitch = generatePitchContent(selectedSkill, experience, specialties)
+      setGeneratedPitch(fallbackPitch)
+    } finally {
       setIsGenerating(false)
-    }, 2000)
+    }
   }
 
   const generatePitchContent = (skill, exp, specs) => {

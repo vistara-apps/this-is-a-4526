@@ -1,58 +1,92 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import GigCard from './GigCard'
-import { Search, Filter, TrendingUp } from 'lucide-react'
+import { Search, Filter, TrendingUp, Loader2 } from 'lucide-react'
+import { supabaseClient } from '../services/api'
+import { useAuth } from '../contexts/AuthContext'
 
 export default function GigsPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('all')
+  const [gigs, setGigs] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const { trackGigInteraction } = useAuth()
 
-  // Mock data for demonstration
-  const gigs = [
-    {
-      gigId: 1,
-      title: 'Content Writer for Tech Blog',
-      description: 'Looking for experienced writers to create engaging tech content. Must have knowledge of AI, blockchain, and web development.',
-      url: 'https://upwork.com/job/123',
-      source: 'Upwork',
-      category: 'writing',
-      payRate: '$25-50/hour',
-      vetted: true,
-      postedDate: '2024-01-15'
-    },
-    {
-      gigId: 2,
-      title: 'React Developer - Remote',
-      description: 'Build modern web applications using React, TypeScript, and Node.js. Perfect for developers with 2+ years experience.',
-      url: 'https://freelancer.com/job/456',
-      source: 'Freelancer',
-      category: 'development',
-      payRate: '$40-80/hour',
-      vetted: true,
-      postedDate: '2024-01-14'
-    },
-    {
-      gigId: 3,
-      title: 'Social Media Manager',
-      description: 'Manage social media accounts for e-commerce brand. Create content, schedule posts, and engage with followers.',
-      url: 'https://fiverr.com/gig/789',
-      source: 'Fiverr',
-      category: 'marketing',
-      payRate: '$20-35/hour',
-      vetted: true,
-      postedDate: '2024-01-13'
-    },
-    {
-      gigId: 4,
-      title: 'UI/UX Designer',
-      description: 'Design user interfaces for mobile apps. Experience with Figma and design systems required.',
-      url: 'https://99designs.com/job/012',
-      source: '99designs',
-      category: 'design',
-      payRate: '$30-60/hour',
-      vetted: true,
-      postedDate: '2024-01-12'
+  // Fetch gigs from API
+  useEffect(() => {
+    fetchGigs()
+  }, [selectedCategory, searchTerm])
+
+  const fetchGigs = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      
+      const filters = {
+        category: selectedCategory,
+        search: searchTerm
+      }
+      
+      const data = await supabaseClient.getGigs(filters)
+      setGigs(data || [])
+    } catch (err) {
+      console.error('Error fetching gigs:', err)
+      setError('Failed to load gigs. Please try again.')
+      // Fallback to mock data if API fails
+      setGigs([
+        {
+          gig_id: '1',
+          title: 'Content Writer for Tech Blog',
+          description: 'Looking for experienced writers to create engaging tech content. Must have knowledge of AI, blockchain, and web development.',
+          url: 'https://upwork.com/job/123',
+          source: 'Upwork',
+          category: 'writing',
+          pay_rate: '$25-50/hour',
+          vetted: true,
+          posted_date: '2024-01-15'
+        },
+        {
+          gig_id: '2',
+          title: 'React Developer - Remote',
+          description: 'Build modern web applications using React, TypeScript, and Node.js. Perfect for developers with 2+ years experience.',
+          url: 'https://freelancer.com/job/456',
+          source: 'Freelancer',
+          category: 'development',
+          pay_rate: '$40-80/hour',
+          vetted: true,
+          posted_date: '2024-01-14'
+        },
+        {
+          gig_id: '3',
+          title: 'Social Media Manager',
+          description: 'Manage social media accounts for e-commerce brand. Create content, schedule posts, and engage with followers.',
+          url: 'https://fiverr.com/gig/789',
+          source: 'Fiverr',
+          category: 'marketing',
+          pay_rate: '$20-35/hour',
+          vetted: true,
+          posted_date: '2024-01-13'
+        },
+        {
+          gig_id: '4',
+          title: 'UI/UX Designer',
+          description: 'Design user interfaces for mobile apps. Experience with Figma and design systems required.',
+          url: 'https://99designs.com/job/012',
+          source: '99designs',
+          category: 'design',
+          pay_rate: '$30-60/hour',
+          vetted: true,
+          posted_date: '2024-01-12'
+        }
+      ])
+    } finally {
+      setLoading(false)
     }
-  ]
+  }
+
+  const handleGigClick = async (gigId) => {
+    await trackGigInteraction(gigId, 'click')
+  }
 
   const categories = [
     { id: 'all', label: 'All Categories' },
@@ -62,12 +96,8 @@ export default function GigsPage() {
     { id: 'marketing', label: 'Marketing' }
   ]
 
-  const filteredGigs = gigs.filter(gig => {
-    const matchesSearch = gig.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         gig.description.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesCategory = selectedCategory === 'all' || gig.category === selectedCategory
-    return matchesSearch && matchesCategory
-  })
+  // Filter is now handled by the API, but we keep this for client-side filtering if needed
+  const filteredGigs = gigs
 
   return (
     <div className="space-y-6">
@@ -115,9 +145,33 @@ export default function GigsPage() {
 
       {/* Gigs List */}
       <div className="space-y-4">
-        {filteredGigs.length > 0 ? (
+        {loading ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="w-6 h-6 animate-spin text-primary" />
+            <span className="ml-2 text-gray-600">Loading gigs...</span>
+          </div>
+        ) : error ? (
+          <div className="text-center py-8">
+            <p className="text-red-500 mb-2">{error}</p>
+            <button 
+              onClick={fetchGigs}
+              className="text-primary hover:underline"
+            >
+              Try again
+            </button>
+          </div>
+        ) : filteredGigs.length > 0 ? (
           filteredGigs.map(gig => (
-            <GigCard key={gig.gigId} gig={gig} />
+            <GigCard 
+              key={gig.gig_id || gig.gigId} 
+              gig={{
+                ...gig,
+                gigId: gig.gig_id || gig.gigId,
+                payRate: gig.pay_rate || gig.payRate,
+                postedDate: gig.posted_date || gig.postedDate
+              }}
+              onGigClick={handleGigClick}
+            />
           ))
         ) : (
           <div className="text-center py-8">

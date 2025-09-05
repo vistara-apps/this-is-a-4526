@@ -1,13 +1,44 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import SkillCard from './SkillCard'
-import { BookOpen, Search, Star } from 'lucide-react'
+import { BookOpen, Search, Star, Loader2 } from 'lucide-react'
+import { supabaseClient } from '../services/api'
+import { useAuth } from '../contexts/AuthContext'
 
 export default function SkillGuidesPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedType, setSelectedType] = useState('all')
+  const [guides, setGuides] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const { user } = useAuth()
 
-  // Mock data for skill guides
-  const guides = [
+  // Fetch guides from API
+  useEffect(() => {
+    fetchGuides()
+  }, [selectedType, searchTerm])
+
+  const fetchGuides = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      
+      const filters = {
+        search: searchTerm
+      }
+      
+      if (selectedType === 'free') {
+        filters.isPremium = false
+      } else if (selectedType === 'premium') {
+        filters.isPremium = true
+      }
+      
+      const data = await supabaseClient.getSkillGuides(filters)
+      setGuides(data || [])
+    } catch (err) {
+      console.error('Error fetching guides:', err)
+      setError('Failed to load guides. Please try again.')
+      // Fallback to mock data if API fails
+      setGuides([
     {
       guideId: 1,
       title: 'Complete Guide to Freelance Writing',
@@ -68,7 +99,11 @@ export default function SkillGuidesPage() {
       rating: 4.5,
       students: 3200
     }
-  ]
+      ])
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const types = [
     { id: 'all', label: 'All Guides' },
@@ -76,14 +111,8 @@ export default function SkillGuidesPage() {
     { id: 'premium', label: 'Premium' }
   ]
 
-  const filteredGuides = guides.filter(guide => {
-    const matchesSearch = guide.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         guide.content.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesType = selectedType === 'all' || 
-                       (selectedType === 'free' && !guide.isPremium) ||
-                       (selectedType === 'premium' && guide.isPremium)
-    return matchesSearch && matchesType
-  })
+  // Filter is now handled by the API, but we keep this for client-side filtering if needed
+  const filteredGuides = guides
 
   return (
     <div className="space-y-6">
@@ -131,9 +160,33 @@ export default function SkillGuidesPage() {
 
       {/* Guides Grid */}
       <div className="grid gap-4 sm:grid-cols-2">
-        {filteredGuides.length > 0 ? (
+        {loading ? (
+          <div className="col-span-full flex items-center justify-center py-8">
+            <Loader2 className="w-6 h-6 animate-spin text-primary" />
+            <span className="ml-2 text-gray-600">Loading guides...</span>
+          </div>
+        ) : error ? (
+          <div className="col-span-full text-center py-8">
+            <p className="text-red-500 mb-2">{error}</p>
+            <button 
+              onClick={fetchGuides}
+              className="text-primary hover:underline"
+            >
+              Try again
+            </button>
+          </div>
+        ) : filteredGuides.length > 0 ? (
           filteredGuides.map(guide => (
-            <SkillCard key={guide.guideId} guide={guide} />
+            <SkillCard 
+              key={guide.guide_id || guide.guideId} 
+              guide={{
+                ...guide,
+                guideId: guide.guide_id || guide.guideId,
+                skillTag: guide.skill_tag || guide.skillTag,
+                isPremium: guide.is_premium !== undefined ? guide.is_premium : guide.isPremium,
+                students: guide.students_enrolled || guide.students
+              }}
+            />
           ))
         ) : (
           <div className="col-span-full text-center py-8">
