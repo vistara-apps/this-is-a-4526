@@ -26,6 +26,13 @@ jobs:
       run: npm run build
       env:
         NODE_OPTIONS: --max-old-space-size=4096
+        # Set dummy environment variables for build
+        VITE_SUPABASE_URL: https://dummy.supabase.co
+        VITE_SUPABASE_ANON_KEY: dummy-key
+        VITE_OPENAI_API_KEY: dummy-key
+        VITE_NEYNAR_API_KEY: dummy-key
+        VITE_STRIPE_PUBLISHABLE_KEY: dummy-key
+        VITE_WALLETCONNECT_PROJECT_ID: dummy-project-id
         
     - name: Deploy to Vercel (Production)
       if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
