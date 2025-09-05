@@ -1,0 +1,16 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --primary: hsl(240 96% 47%);
+  --accent: hsl(176 87% 42%);
+  --bg: hsl(210 40% 96%);
+  --surface: hsl(0 0% 100%);
+}
+
+body {
+  font-family: system-ui, -apple-system, sans-serif;
+  background-color: var(--bg);
+  color: hsl(210 40% 8%);
+}
